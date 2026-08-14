@@ -35,6 +35,8 @@ module_name_repetitions = "allow"
 must_use_candidate = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
+# Nags on prose mentions of DuckDB, UUIDv7, JSONL, and similar in doc text.
+doc_markdown = "allow"
 
 [profile.release]
 strip = true
