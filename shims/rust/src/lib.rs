@@ -55,9 +55,20 @@ struct Inner {
     allow_values: Vec<String>,
     sink: Box<dyn EventSink>,
     context: ExecutionContext,
-    install_id: InstallId,
+    identity: Identity,
     session_id: SessionId,
     started: Instant,
+}
+
+/// Install identity is resolved when the event is recorded, not at start.
+/// Capture must observe the host CLI, never precede it: a command like
+/// `init` gets to create the data directory itself before the shim's lazy
+/// first-event creation would.
+enum Identity {
+    /// Test transport: a fixed ephemeral id, no disk.
+    Fixed(InstallId),
+    /// Production: load-or-create the id file at record time.
+    Lazy(std::path::PathBuf),
 }
 
 impl Analytics {
@@ -110,6 +121,20 @@ impl Analytics {
 
 impl Inner {
     fn record(&self, matches: &ArgMatches, exit_code: i32, error_class: Option<&str>) {
+        let install_id = match &self.identity {
+            Identity::Fixed(id) => *id,
+            Identity::Lazy(path) => match install::load_or_create(path) {
+                Ok((id, created)) => {
+                    if created {
+                        first_run_notice(&self.cli_name);
+                    }
+                    id
+                }
+                // No writable identity means no usable spool either: drop.
+                Err(_) => return,
+            },
+        };
+
         let walk = walk_matches(matches, &self.allow_values);
 
         let phase = if exit_code == 0 && error_class.is_none() {
@@ -144,7 +169,7 @@ impl Inner {
             }
         }
 
-        let event = builder.build_now(self.install_id, self.session_id);
+        let event = builder.build_now(install_id, self.session_id);
         self.sink.record(&event);
     }
 }
@@ -207,7 +232,7 @@ impl AnalyticsBuilder {
                     allow_values: self.allow_values,
                     sink,
                     context: context::detect(),
-                    install_id: InstallId::generate(),
+                    identity: Identity::Fixed(InstallId::generate()),
                     session_id: SessionId::generate(),
                     started,
                 }),
@@ -218,12 +243,6 @@ impl AnalyticsBuilder {
         if !config.enabled {
             return Analytics::disabled();
         }
-        let Ok((install_id, created)) = install::load_or_create(&config.install_id_path()) else {
-            return Analytics::disabled();
-        };
-        if created {
-            first_run_notice(&self.cli_name);
-        }
 
         Analytics {
             inner: Some(Inner {
@@ -232,7 +251,7 @@ impl AnalyticsBuilder {
                 allow_values: self.allow_values,
                 sink: Box::new(SpoolSink::new(config.spool_dir())),
                 context: context::detect(),
-                install_id,
+                identity: Identity::Lazy(config.install_id_path()),
                 session_id: SessionId::generate(),
                 started,
             }),
