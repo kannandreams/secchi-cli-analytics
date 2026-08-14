@@ -6,6 +6,11 @@
 //! one place. Framework shims depend on the default features only, which
 //! keeps their dependency tree small and DuckDB-free.
 
+pub mod config;
+pub mod context;
 pub mod error;
 pub mod event;
+pub mod install;
 pub mod redact;
+pub mod sink;
+pub mod spool;
