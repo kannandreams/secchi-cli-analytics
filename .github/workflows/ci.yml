@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      # Caching is essential here: the bundled libduckdb-sys build takes
+      # several minutes cold.
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Test
+        run: cargo test --workspace --all-features
+      - name: Build
+        run: cargo build --workspace --release
+
+  deny:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+
+  # Single required check for branch protection; stays green only if every
+  # job above succeeded.
+  ci-required:
+    name: CI Required
+    needs: [checks, deny]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assert all jobs succeeded
+        run: |
+          [[ "${{ needs.checks.result }}" == "success" ]] || exit 1
+          [[ "${{ needs.deny.result }}" == "success" ]] || exit 1

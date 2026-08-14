@@ -1,0 +1,29 @@
+[package]
+name = "secchi-cli-analytics"
+description = "Local-first CLI usage analytics: capture, inspect, and aggregate command telemetry"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+# `cargo install secchi-cli-analytics` installs the `secchi-analytics`
+# binary; the package name matches the repository, the binary matches the
+# `secchi analytics` dispatch contract.
+[[bin]]
+name = "secchi-analytics"
+path = "src/main.rs"
+
+[dependencies]
+secchi-analytics-core = { workspace = true, features = ["store"] }
+secchi-analytics-clap.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+assert_cmd.workspace = true
+
+[lints]
+workspace = true
