@@ -1339,6 +1339,7 @@ dependencies = [
  "anyhow",
  "assert_cmd",
  "clap",
+ "jiff",
  "predicates",
  "secchi-analytics-clap",
  "secchi-analytics-core",

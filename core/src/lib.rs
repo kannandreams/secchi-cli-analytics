@@ -14,3 +14,5 @@ pub mod install;
 pub mod redact;
 pub mod sink;
 pub mod spool;
+#[cfg(feature = "store")]
+pub mod store;

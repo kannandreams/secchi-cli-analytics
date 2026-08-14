@@ -119,6 +119,89 @@ fn purge_deletes_everything_and_records_nothing() {
 }
 
 #[test]
+fn stats_and_tail_see_self_recorded_events() {
+    let dir = TempDir::new().unwrap();
+    cmd(&dir).arg("init").assert().success();
+    cmd(&dir).arg("status").assert().success();
+
+    // init + status are in the spool; stats reads them without compaction.
+    let stats = cmd(&dir)
+        .args(["stats", "--since", "1d", "--json"])
+        .assert()
+        .success();
+    let report: serde_json::Value = serde_json::from_slice(&stats.get_output().stdout).unwrap();
+    assert_eq!(report["total_invocations"], 2);
+    assert_eq!(report["total_failures"], 0);
+
+    let tail = cmd(&dir).args(["tail", "--json"]).assert().success();
+    let stdout = String::from_utf8_lossy(&tail.get_output().stdout).into_owned();
+    // init + status + the stats invocation just above.
+    assert_eq!(stdout.lines().count(), 3);
+    let newest: serde_json::Value = serde_json::from_str(stdout.lines().next().unwrap()).unwrap();
+    assert_eq!(newest["event_name"], "secchi-analytics.stats.completed");
+    assert_eq!(newest["flag_names"], serde_json::json!(["json", "since"]));
+    assert_eq!(newest["flag_values"]["since"], "1d");
+
+    // Human-readable variants render without error.
+    cmd(&dir)
+        .arg("stats")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("COMMAND"));
+    cmd(&dir)
+        .arg("tail")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains(
+            "secchi-analytics.status.completed",
+        ));
+}
+
+#[test]
+fn compact_reports_and_stats_stay_correct() {
+    let dir = TempDir::new().unwrap();
+    cmd(&dir).arg("init").assert().success();
+
+    // Everything in the spool is from today, so there is nothing to rotate.
+    cmd(&dir)
+        .arg("compact")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Nothing to compact"));
+
+    // A closed day planted in the spool gets rotated on the next run.
+    // Yesterday, so it is closed but comfortably inside retention.
+    let yesterday = (jiff::Zoned::now().with_time_zone(jiff::tz::TimeZone::UTC)
+        - jiff::Span::new().hours(24))
+    .date();
+    let spool = dir.path().join("analytics").join("spool");
+    let old_line = format!(
+        r#"{{"event_id":"0198aaaa-0000-7000-8000-00000000000f","schema_version":1,"event_name":"otherctl.build.completed","ts":"{yesterday}T10:00:00Z","install_id":"11111111-2222-4333-8444-555555555555","session_id":"0198aaaa-0000-7000-8000-000000000002","cli_name":"otherctl","command_path":["build"],"flag_names":[],"actor":"human","ci":false,"interactive":true,"os":"linux","arch":"x86_64","sdk_version":"0.1.0"}}"#
+    );
+    std::fs::write(
+        spool.join(format!("{yesterday}.jsonl")),
+        format!("{old_line}\n"),
+    )
+    .unwrap();
+
+    cmd(&dir)
+        .arg("compact")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains(format!(
+            "compacted {yesterday}: 1 new event(s)"
+        )));
+    assert!(!spool.join(format!("{yesterday}.jsonl")).exists());
+    assert!(
+        dir.path()
+            .join("analytics")
+            .join("archive")
+            .join(format!("{yesterday}.parquet"))
+            .exists()
+    );
+}
+
+#[test]
 fn purge_without_confirmation_aborts() {
     let dir = TempDir::new().unwrap();
     cmd(&dir).arg("init").assert().success();
