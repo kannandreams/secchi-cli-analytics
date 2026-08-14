@@ -187,14 +187,8 @@ mod tests {
                 "sk-proj-FAKE00000000000000000000",
                 SecretPattern::SkPrefixedKey,
             ),
-            (
-                "sk_live_FAKE0000000000000000",
-                SecretPattern::SkPrefixedKey,
-            ),
-            (
-                "ghp_FAKE000000000000FAKE",
-                SecretPattern::GithubToken,
-            ),
+            ("sk_live_FAKE0000000000000000", SecretPattern::SkPrefixedKey),
+            ("ghp_FAKE000000000000FAKE", SecretPattern::GithubToken),
             (
                 "github_pat_11ABCDEFG0abcdefghijklmnop",
                 SecretPattern::GithubToken,
