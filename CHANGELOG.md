@@ -12,3 +12,6 @@ then `secchi-analytics-clap`, then `secchi-cli-analytics`.
 - Initial version: event schema v1, redaction engine, JSONL spool capture,
   clap shim, and the `secchi-analytics` binary with `init`, `stats`, `tail`,
   `status`, `compact`, and `purge`.
+- Add the pure-Python Click adapter with schema-v1-compatible spool capture,
+  deterministic test transport, allowlisted-value redaction, and failure
+  isolation.

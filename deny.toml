@@ -14,6 +14,8 @@ allow = [
     "Zlib",
     "CC0-1.0",
     "BSL-1.0",
+    # webpki-roots certificate data, pulled by DuckDB's ureq build chain.
+    "CDLA-Permissive-2.0",
 ]
 
 [advisories]
