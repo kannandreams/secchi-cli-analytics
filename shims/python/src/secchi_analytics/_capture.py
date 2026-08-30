@@ -201,6 +201,8 @@ def build_event(
     session_id: uuid.UUID,
     event_id: uuid.UUID | None = None,
     timestamp: datetime | None = None,
+    os_name: str | None = None,
+    arch_name: str | None = None,
 ) -> dict[str, object]:
     phase = "completed" if exit_code == 0 and error_class is None else "failed"
     suffix = ".".join([*command_path, phase])
@@ -220,8 +222,8 @@ def build_event(
         "actor": context.actor,
         "ci": context.ci,
         "interactive": context.interactive,
-        "os": _rust_os_name(),
-        "arch": _rust_arch_name(),
+        "os": _rust_os_name() if os_name is None else os_name,
+        "arch": _rust_arch_name() if arch_name is None else arch_name,
         "sdk_version": __version__,
     }
     if cli_version is not None:

@@ -29,6 +29,8 @@ def test_event_matches_rust_v1_golden() -> None:
         session_id=uuid.UUID("0198aaaa-0000-7000-8000-000000000002"),
         event_id=uuid.UUID("0198aaaa-0000-7000-8000-000000000001"),
         timestamp=datetime(2026, 8, 14, 12, tzinfo=timezone.utc),
+        os_name="macos",
+        arch_name="aarch64",
     )
 
     golden_path = Path(__file__).parents[3] / "core/tests/golden/event_v1.json"
