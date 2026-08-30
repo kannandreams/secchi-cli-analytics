@@ -1,6 +1,10 @@
-# dbt package (planned)
+# dbt package (deferred)
 
-`dbt_secchi_analytics` lands here in Phase 3: staging, intermediate, and
-mart models over the raw events table, runnable unmodified on DuckDB,
-Postgres, Snowflake, and BigQuery. The local profile will point
-`dbt-duckdb` at `~/.secchi/analytics/events.duckdb`.
+Local CLI event volume does not currently justify a modeling runtime. Secchi
+uses purpose-built SQL in `core/src/store/query.rs` directly against DuckDB,
+and the future local dashboard should call that same Rust query layer.
+
+Reconsider `dbt_secchi_analytics` only when a shared collector or warehouse
+needs reusable staging and marts across DuckDB, Postgres, Snowflake, or
+BigQuery. Until then, keeping queries beside the application code makes them
+easy to test, version, and inspect without another dependency.

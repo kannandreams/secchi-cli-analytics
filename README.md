@@ -45,7 +45,7 @@ from clap, Click, or Cobra.
 ```text
    your CLI
    ┌─────────────────────────────────────────────────────────┐
-   │  clap (shipped)   click / typer (planned)               │
+   │  clap (shipped)   click (shipped)   typer (compatible)  │
    │  cobra (planned)  generic wrapper (planned)             │
    └────────────────────────┬────────────────────────────────┘
                             │ one call at startup, one at exit
@@ -125,6 +125,22 @@ let analytics = Analytics::builder("myctl").sink(sink.clone()).start();
 assert_eq!(sink.events().len(), 1);
 ```
 
+## Instrumenting a Click or Typer CLI
+
+The Python adapter is pure Python and writes the same event schema to the
+same local spool as the Rust adapter:
+
+```python
+from secchi_analytics.click import instrument
+
+instrument(cli, app_name="myctl", cli_version="1.2.3")
+```
+
+For Typer, pass its generated Click command:
+`instrument(typer.main.get_command(app), app_name="myctl")`. The adapter
+records only resolved command paths and explicitly supplied option names;
+positional arguments and raw argv never enter the event.
+
 ## What is captured, what is not
 
 | Captured | Never captured |
@@ -162,15 +178,17 @@ they are correct even if `compact` has never run.
 core/           event schema, redaction, spool, DuckDB store
 daemon/         the secchi-analytics binary
 shims/rust/     clap adapter (this repo dogfoods it)
-shims/python/   Click/Typer adapter        (planned, phase 1)
+shims/python/   Click adapter              (shipped, phase 1)
 shims/go/       Cobra adapter              (planned, phase 2)
 shims/generic/  process-boundary wrapper   (planned, phase 2)
-dbt/            dbt_secchi_analytics       (planned, phase 3)
+dbt/            deferred; direct DuckDB SQL is the current query layer
 ```
 
 Deferred by design, tracked in the roadmap: the Unix-socket fast path and
-long-lived daemon mode, REST export and the enterprise collector, and
-`pip install "secchi[cli-analytics]"` as a convenience install.
+long-lived daemon mode, dbt/warehouse modeling, REST export and the enterprise
+collector, and `pip install "secchi[cli-analytics]"` as a convenience install.
+Local analytics stays on DuckDB with purpose-built SQL until its query volume
+or deployment shape makes a modeling layer worthwhile.
 
 ## Development
 
